@@ -8,6 +8,8 @@ services:
             dockerfile: docker/Dockerfile
         ports:
             - 8002:8002
+        environment: 
+            - BASE_DIR=/opt/data
         volumes:
             - ../repos:/opt/data
         networks: 

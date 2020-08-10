@@ -18,7 +18,7 @@ import (
 var (
 	bindAddress = env.String("BIND_ADDRESS", false, ":8002", "Bind address for the server")
 	logLevel    = env.String("LOG_LEVEL", false, "debug", "Log output level for the server [debug, info, trace]")
-	basePath    = env.String("BASE_PATH", false, "/opt/data", "Base path to save uploads")
+	basePath    = env.String("BASE_PATH", false, "./repos", "Base path to save uploads")
 )
 
 func main() {
