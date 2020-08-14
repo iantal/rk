@@ -22,6 +22,10 @@ RUN cp /build/main .
 
 FROM golang:alpine as deploy
 COPY --from=builder /dist .
+
+RUN apk update && apk add wget && apk add bash
+RUN wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x wait-for-it.sh
+
 ENV BASE_PATH="/opt/data"
 VOLUME [ "/opt/data" ]
 EXPOSE 8002

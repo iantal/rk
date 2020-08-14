@@ -20,15 +20,25 @@ services:
             dockerfile: docker/Dockerfile
         ports:
             - 8002:8002
+        env_file: 
+            - database.env
         environment: 
-            - BASE_DIR=/opt/data
+            POSTGRES_HOST: pgdb
+            POSTGRES_PORT: 5432
+            BASE_DIR: /opt/data
         volumes:
             - ../repos:/opt/data
         networks: 
             - app_net
-
-volumes: 
+        depends_on:
+            - pgdb
+        links: 
+            - pgdb
+        command: ["./wait-for-it.sh", "pgdb:5432", "--", "./main"]
+volumes:
     database-data:
+        driver: 
+            local
 
 networks:
     app_net:

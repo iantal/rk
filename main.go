@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,7 +13,10 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/iantal/rk/internal/files"
 	"github.com/iantal/rk/internal/rest/handlers"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // postgres
 	"github.com/nicholasjackson/env"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -22,6 +26,7 @@ var (
 )
 
 func main() {
+	viper.AutomaticEnv()
 	env.Parse()
 
 	l := hclog.New(
@@ -35,11 +40,31 @@ func main() {
 	sl := l.StandardLogger(&hclog.StandardLoggerOptions{InferLevels: true})
 
 	// create the storage class, use local storage
-	// max filesize 5MB
+	// max filesize 5GB
 	stor, err := files.NewLocal(*basePath, 1024*1000*1000*5)
 	if err != nil {
 		l.Error("Unable to create storage", "error", err)
 		os.Exit(1)
+	}
+
+	user := viper.Get("POSTGRES_USER")
+	password := viper.Get("POSTGRES_PASSWORD")
+	database := viper.Get("POSTGRES_DB")
+	host := viper.Get("POSTGRES_HOST")
+	port := viper.Get("POSTGRES_PORT")
+	connection := fmt.Sprintf("host=%v port=%v user=%v dbname=%v password=%v sslmode=disable", host, port, user, database, password)
+
+	l.Debug("Connection string", "con", connection)
+
+	db, err := gorm.Open("postgres", connection)
+	defer db.Close()
+	if err != nil {
+		panic("Failed to connect to database!")
+	}
+
+	err = db.DB().Ping()
+	if err != nil {
+		panic("Ping failed!")
 	}
 
 	// create the handlers
