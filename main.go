@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/iantal/rk/internal/repository"
+
 	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	hclog "github.com/hashicorp/go-hclog"
@@ -54,8 +56,6 @@ func main() {
 	port := viper.Get("POSTGRES_PORT")
 	connection := fmt.Sprintf("host=%v port=%v user=%v dbname=%v password=%v sslmode=disable", host, port, user, database, password)
 
-	l.Debug("Connection string", "con", connection)
-
 	db, err := gorm.Open("postgres", connection)
 	defer db.Close()
 	if err != nil {
@@ -67,7 +67,8 @@ func main() {
 		panic("Ping failed!")
 	}
 
-	// create the handlers
+	projectDB := repository.NewProjectDB(l, db)
+	projH := handlers.NewProjects(l, stor, projectDB)
 	fh := handlers.NewFiles(stor, l)
 	mw := handlers.GzipHandler{}
 
@@ -82,6 +83,7 @@ func main() {
 
 	// get files
 	gh := sm.Methods(http.MethodGet).Subrouter()
+	gh.HandleFunc("/api/v1/projects", projH.ListAll)
 	gh.Handle(
 		"/uploads/{id:[0-9]+}/{filename:[a-zA-Z]+\\.[a-z]{3}}",
 		http.StripPrefix("/uploads/", http.FileServer(http.Dir(*basePath))),
