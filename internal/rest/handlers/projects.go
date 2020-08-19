@@ -71,14 +71,26 @@ func (p *Projects) CreateProject(rw http.ResponseWriter, r *http.Request) {
 func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.ReadCloser) {
 	p.l.Info("Save project - storage", "id", id, "path", path)
 
-	fp := filepath.Join(id.String(), path)
+	unzippedPath := filepath.Join(id.String(), "unzip")
+
+	zp := path + ".zip"
+	fp := filepath.Join(id.String(), "zip", zp)
 	err := p.store.Save(fp, r)
+
 	if err != nil {
 		p.l.Error("Unable to save file", "error", err)
 		http.Error(rw, "Unable to save file", http.StatusInternalServerError)
 	} else {
-		project := domain.NewProject(id, path, p.store.FullPath(fp))
-		p.l.Debug("Save project - db", "id", id, "path", path)
-		p.db.AddProject(project)
+		p.l.Info("Unzipping", "id", id, "path", unzippedPath)
+		err := p.store.Unzip(p.store.FullPath(fp), p.store.FullPath(unzippedPath))
+
+		if err != nil {
+			p.l.Error("Unable to unzip file", "error", err)
+			http.Error(rw, "Unable to unzip file", http.StatusInternalServerError)
+		} else {
+			project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
+			p.l.Debug("Save project - db", "id", id, "path", path)
+			p.db.AddProject(project)
+		}
 	}
 }
