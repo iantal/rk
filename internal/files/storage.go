@@ -6,4 +6,5 @@ import "io"
 // Implementations may be of the time local disk, or cloud storage, etc
 type Storage interface {
 	Save(path string, file io.Reader) error
+	FullPath(path string) string
 }
