@@ -36,6 +36,13 @@ func (p *ProjectDB) GetProjects() ([]*domain.Project, error) {
 }
 
 // GetProjectByID returns the project with the given id
-func (p *ProjectDB) GetProjectByID(id uuid.UUID) *domain.Project {
-	return &domain.Project{}
+func (p *ProjectDB) GetProjectByID(id string) *domain.Project {
+	project := &domain.Project{}
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		p.log.Error("Project with projectId {} was not found")
+		return nil
+	}
+	p.db.Find(&project, "project_id = ?", uid)
+	return project
 }
