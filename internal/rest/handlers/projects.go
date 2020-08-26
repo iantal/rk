@@ -54,7 +54,7 @@ func (p *Projects) ListAll(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
+func (p *Projects) Download(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -67,6 +67,25 @@ func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-type", "application/zip")
 	http.ServeFile(rw, r, project.ZippedPath)
+}
+
+func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	project := p.db.GetProjectByID(id)
+	if project == nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		util.ToJSON(&GenericError{Message: "Project not found"}, rw)
+		return
+	}
+
+	rw.Header().Set("Content-type", "application/json")
+	err := util.ToJSON(project, rw)
+	if err != nil {
+		// we should never be here but log the error just incase
+		p.l.Error("Unable to serialize project", "error", err)
+	}
 }
 
 // CreateProject saves the project zip on the storage and adds it in the database as well
@@ -96,18 +115,8 @@ func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.
 		p.l.Error("Unable to save file", "error", err)
 		http.Error(rw, "Unable to save file", http.StatusInternalServerError)
 	} else {
-		// p.l.Info("Unzipping", "id", id, "path", unzippedPath)
-		// err := p.store.Unzip(p.store.FullPath(fp), p.store.FullPath(unzippedPath))
-
-		// if err != nil {
-		// 	p.l.Error("Unable to unzip file", "error", err)
-		// 	http.Error(rw, "Unable to unzip file", http.StatusInternalServerError)
-		// } else {
-			project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
-			p.l.Debug("Save project - db", "id", id, "path", path)
-			p.db.AddProject(project)
-		// }
+		project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
+		p.l.Debug("Save project - db", "id", id, "path", path)
+		p.db.AddProject(project)
 	}
 }
-
-

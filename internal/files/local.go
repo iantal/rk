@@ -1,7 +1,6 @@
 package files
 
 import (
-	"archive/zip"
 	"io"
 	"os"
 	"path/filepath"
@@ -89,42 +88,4 @@ func (l *Local) Get(path string) (*os.File, error) {
 func (l *Local) FullPath(path string) string {
 	// append the given path to the base path
 	return filepath.Join(l.basePath, path)
-}
-
-func (l *Local) Unzip(archive, target string) error {
-	reader, err := zip.OpenReader(archive)
-	if err != nil {
-		return xerrors.Errorf("Unable to open zip file: %w", err)
-	}
-
-	td := filepath.Join(target, "kafka")
-	if err := os.MkdirAll(td, 0755); err != nil {
-		return xerrors.Errorf("Unable to create target directory: %w", err)
-	}
-
-	for _, file := range reader.File {
-		path := filepath.Join(target, file.Name)
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-		} else {
-			fileReader, err := file.Open()
-			if err != nil {
-				return xerrors.Errorf("Unable to open file: %w", err)
-			}
-			defer fileReader.Close()
-
-			// create a new file at the path
-			targetFile, err := os.Create(path)
-			if err != nil {
-				return xerrors.Errorf("Unable to create file: %w", err)
-			}
-			defer targetFile.Close()
-
-			if _, err := io.Copy(targetFile, fileReader); err != nil {
-				return xerrors.Errorf("Unable to write target file: %w", err)
-			}
-		}
-	}
-
-	return nil
 }
