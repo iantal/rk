@@ -31,7 +31,7 @@ func NewLocal(basePath string, maxSize int) (*Local, error) {
 // path is a relative path, basePath will be appended
 func (l *Local) Save(path string, contents io.Reader) error {
 	// get the full path for the file
-	fp := l.fullPath(path)
+	fp := l.FullPath(path)
 
 	// get the directory and make sure it exists
 	d := filepath.Dir(fp)
@@ -73,7 +73,7 @@ func (l *Local) Save(path string, contents io.Reader) error {
 // the calling function is responsible for closing the reader
 func (l *Local) Get(path string) (*os.File, error) {
 	// get the full path for the file
-	fp := l.fullPath(path)
+	fp := l.FullPath(path)
 
 	// open the file
 	f, err := os.Open(fp)
@@ -84,8 +84,8 @@ func (l *Local) Get(path string) (*os.File, error) {
 	return f, nil
 }
 
-// returns the absolute path
-func (l *Local) fullPath(path string) string {
+// FullPath returns the absolute path
+func (l *Local) FullPath(path string) string {
 	// append the given path to the base path
 	return filepath.Join(l.basePath, path)
 }

@@ -69,7 +69,6 @@ func main() {
 
 	projectDB := repository.NewProjectDB(l, db)
 	projH := handlers.NewProjects(l, stor, projectDB)
-	fh := handlers.NewFiles(stor, l)
 	mw := handlers.GzipHandler{}
 
 	// create a new serve mux and register the handlers
@@ -77,17 +76,13 @@ func main() {
 
 	ch := gohandlers.CORS(gohandlers.AllowedOrigins([]string{"*"}))
 
-	// upload files
 	ph := sm.Methods(http.MethodPost).Subrouter()
-	ph.HandleFunc("/uploads/{id:[0-9]+}/{filename:[a-zA-Z]+\\.[a-z]{3}}", fh.UploadREST)
+	ph.HandleFunc("/api/v1/projects/{filename:[a-z]+}", projH.CreateProject)
 
-	// get files
 	gh := sm.Methods(http.MethodGet).Subrouter()
 	gh.HandleFunc("/api/v1/projects", projH.ListAll)
-	gh.Handle(
-		"/uploads/{id:[0-9]+}/{filename:[a-zA-Z]+\\.[a-z]{3}}",
-		http.StripPrefix("/uploads/", http.FileServer(http.Dir(*basePath))),
-	)
+	gh.HandleFunc("/api/v1/projects/{id:[0-9a-f-]{36}}", projH.ListSingle)
+	gh.HandleFunc("/api/v1/projects/{id:[0-9a-f-]{36}}/download", projH.Download)
 	gh.Use(mw.GzipMiddleware)
 
 	// create a new server

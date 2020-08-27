@@ -7,8 +7,19 @@ import (
 
 // Project defines data related to a project repository
 type Project struct {
-	gorm.Model
-	ID   uuid.UUID `gorm:"type:uuid;primary_key;"`
-	Name string
-	Path string
+	gorm.Model  `json:"-"`
+	ProjectID   uuid.UUID `gorm:"type:uuid;primary_key;" json:"projectId"`
+	Name        string    `json:"name"`
+	UnzipedPath string    `json:"unzip"`
+	ZippedPath  string    `json:"zip"`
+}
+
+// NewProject creates an instance of Project
+func NewProject(id uuid.UUID, name, unzipped, zipped string) *Project {
+	return &Project{
+		ProjectID:   id,
+		Name:        name,
+		UnzipedPath: unzipped,
+		ZippedPath:  zipped,
+	}
 }
