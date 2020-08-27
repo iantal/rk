@@ -9,9 +9,9 @@ import (
 type Project struct {
 	gorm.Model  `json:"-"`
 	ProjectID   uuid.UUID `gorm:"type:uuid;primary_key;" json:"projectId"`
-	Name        string    `json:"name"`
-	UnzipedPath string    `json:"unzip"`
-	ZippedPath  string    `json:"zip"`
+	Name        string    `json:"name,omitempty"`
+	UnzipedPath string    `json:"unzip,omitempty"`
+	ZippedPath  string    `json:"zip,omitempty"`
 }
 
 // NewProject creates an instance of Project
