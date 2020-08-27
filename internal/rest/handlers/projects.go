@@ -96,13 +96,18 @@ func (p *Projects) CreateProject(rw http.ResponseWriter, r *http.Request) {
 
 	p.l.Info("Creating project", "id", id, "filename", fn)
 
-	// no need to check for invalid id or filename as the mux router will not send requests
-	// here unless they have the correct parameters
-	p.save(id, fn, rw, r.Body)
-
+	savedProject := p.save(id, fn, rw, r.Body)
+	if savedProject != nil {
+		rw.Header().Set("Content-type", "application/json")
+		err := util.ToJSON(savedProject, rw)
+		if err != nil {
+			// we should never be here but log the error just incase
+			p.l.Error("Unable to serialize project", "error", err)
+		}
+	}
 }
 
-func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.ReadCloser) {
+func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.ReadCloser) *domain.Project {
 	p.l.Info("Save project - storage", "id", id, "path", path)
 
 	unzippedPath := filepath.Join(id.String(), "unzip")
@@ -114,9 +119,11 @@ func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.
 	if err != nil {
 		p.l.Error("Unable to save file", "error", err)
 		http.Error(rw, "Unable to save file", http.StatusInternalServerError)
-	} else {
-		project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
-		p.l.Debug("Save project - db", "id", id, "path", path)
-		p.db.AddProject(project)
+		return nil
 	}
+
+	project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
+	p.l.Debug("Save project - db", "id", id, "path", path)
+	p.db.AddProject(project)
+	return project
 }
