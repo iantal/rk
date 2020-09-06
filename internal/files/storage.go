@@ -7,4 +7,6 @@ import "io"
 type Storage interface {
 	Save(path string, file io.Reader) error
 	FullPath(path string) string
+	Unzip(src, dest, name string) error
+	Zip(src, dest, dir, name string) error
 }

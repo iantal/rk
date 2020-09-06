@@ -6,5 +6,5 @@ The zip file should contain hidden directories and files as well. For example .g
 Command to generate the zip file
 
 ```
-zip archiveName.zip -r .* -x "../*"
+zip archiveName.zip -r .* * -x "../*"
 ```

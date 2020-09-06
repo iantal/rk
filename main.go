@@ -82,6 +82,7 @@ func main() {
 	gh := sm.Methods(http.MethodGet).Subrouter()
 	gh.HandleFunc("/api/v1/projects", projH.ListAll)
 	gh.HandleFunc("/api/v1/projects/{id:[0-9a-f-]{36}}", projH.ListSingle)
+	gh.HandleFunc("/api/v1/projects/{id:[0-9a-f-]{36}}/download/git", projH.DownloadGitDir)
 	gh.HandleFunc("/api/v1/projects/{id:[0-9a-f-]{36}}/download", projH.Download)
 	gh.Use(mw.GzipMiddleware)
 

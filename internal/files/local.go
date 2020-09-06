@@ -1,9 +1,12 @@
 package files
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"golang.org/x/xerrors"
 )
@@ -88,4 +91,59 @@ func (l *Local) Get(path string) (*os.File, error) {
 func (l *Local) FullPath(path string) string {
 	// append the given path to the base path
 	return filepath.Join(l.basePath, path)
+}
+
+// Unzip uses the unzip command line tool to extract the project to the specified target directory
+func (l *Local) Unzip(archive, target, name string) error {
+	td := filepath.Join(target, name)
+	if err := os.MkdirAll(td, 0755); err != nil {
+		return xerrors.Errorf("Unable to create target directory: %w", err)
+	}
+
+	cmd := exec.Command("unzip", archive, "-d", td)
+
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		if err != nil {
+			os.Stderr.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+		}
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			fmt.Printf("Output: %s\n", []byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+		return err
+	}
+
+	waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+
+	return nil
+}
+
+// Zip uses the zip command line tool to compress the project to the specified target directory
+func (l *Local) Zip(src, dest, dir, name string) error {
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return xerrors.Errorf("Unable to create target directory: %w", err)
+	}
+
+	archive := name + ".zip"
+
+	os.Chdir(filepath.Join(src, name))
+	cmd := exec.Command("zip", filepath.Join(dest, archive), "-r", dir)
+	os.Chdir("-")
+
+	var waitStatus syscall.WaitStatus
+	if err := cmd.Run(); err != nil {
+		if err != nil {
+			os.Stderr.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+		}
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus = exitError.Sys().(syscall.WaitStatus)
+			fmt.Printf("Output: %s\n", []byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+		}
+		return err
+	}
+
+	waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+
+	return nil
 }

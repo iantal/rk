@@ -69,6 +69,22 @@ func (p *Projects) Download(rw http.ResponseWriter, r *http.Request) {
 	http.ServeFile(rw, r, project.ZippedPath)
 }
 
+func (p *Projects) DownloadGitDir(rw http.ResponseWriter, r *http.Request) {
+	p.l.Info("Downloading git files only")
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	project := p.db.GetProjectByID(id)
+	if project == nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		util.ToJSON(&GenericError{Message: "Project not found"}, rw)
+		return
+	}
+
+	rw.Header().Set("Content-type", "application/zip")
+	http.ServeFile(rw, r, project.GitZippedPath)
+}
+
 func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -111,6 +127,7 @@ func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.
 	p.l.Info("Save project - storage", "id", id, "path", path)
 
 	unzippedPath := filepath.Join(id.String(), "unzip")
+	gzp := filepath.Join(id.String(), "git")
 
 	zp := path + ".zip"
 	fp := filepath.Join(id.String(), "zip", zp)
@@ -122,8 +139,24 @@ func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.
 		return nil
 	}
 
-	project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp))
+	go p.process(fp, unzippedPath, gzp, path)
+
+	zf := filepath.Join(p.store.FullPath(gzp), zp)
+	project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp), zf)
 	p.l.Debug("Save project - db", "id", id, "path", path)
 	p.db.AddProject(project)
 	return project
+}
+
+func (p *Projects) process(fp, unzippedPath, gzp, path string) {
+	p.l.Info("Unzipping", "path", unzippedPath)
+	err := p.store.Unzip(p.store.FullPath(fp), p.store.FullPath(unzippedPath), path)
+	if err != nil {
+		p.l.Error("Unable to unzip file", "error", err)
+	}
+
+	err = p.store.Zip(p.store.FullPath(unzippedPath), p.store.FullPath(gzp), ".git", path)
+	if err != nil {
+		p.l.Error("Unable to zip .git directory", "error", err)
+	}
 }
