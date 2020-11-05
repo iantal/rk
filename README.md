@@ -1,3 +1,5 @@
+![Docker Publish](https://github.com/iantal/rk/workflows/Docker%20Publish/badge.svg)
+
 # rk
 Repository Keeper
 
