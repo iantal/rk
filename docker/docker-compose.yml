@@ -1,18 +1,6 @@
 version: '3.8'
 
-services:    
-    pgdb:
-        container_name: pgdb
-        image: postgres:latest
-        env_file: 
-            - database.env
-        ports:
-            - 5432:5432
-        volumes:
-            - database-data:/var/lib/postgresql/data/
-        networks: 
-            - app_net
-
+services:
     rk:
         container_name: rk
         build:
@@ -28,33 +16,9 @@ services:
             BASE_DIR: /opt/data
         volumes:
             - ../repos:/opt/data
-        networks: 
-            - app_net
-        depends_on:
-            - pgdb
-        links: 
-            - pgdb
         command: ["./wait-for-it.sh", "pgdb:5432", "--", "./main"]
 
-    pgadmin:
-        image: dpage/pgadmin4
-        container_name: pgadmin
-        environment:
-            PGADMIN_DEFAULT_EMAIL: live@admin.com
-            PGADMIN_DEFAULT_PASSWORD: password
-        depends_on:
-            - pgdb
-        ports:
-            - "5050:80"
-        networks:
-            - app_net
-        restart: unless-stopped
-
-volumes:
-    database-data:
-        driver: 
-            local
-
 networks:
-    app_net:
-        driver: bridge
+    default:
+        external:
+            name: proxynet
