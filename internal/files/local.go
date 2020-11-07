@@ -1,12 +1,10 @@
 package files
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 
 	"github.com/iantal/rk/internal/util"
 	"golang.org/x/xerrors"
@@ -104,19 +102,17 @@ func (l *Local) Unzip(archive, target, name string) error {
 
 	cmd := exec.Command("unzip", archive, "-d", td)
 
-	var waitStatus syscall.WaitStatus
 	if err := cmd.Run(); err != nil {
 		if err != nil {
-			l.log.Error("Error ", err.Error())
+			return xerrors.Errorf("Unable to unzip archive: %w", err)
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
-			waitStatus = exitError.Sys().(syscall.WaitStatus)
-			fmt.Printf("Output: %s\n", []byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+			exitError.Sys()
 		}
 		return err
 	}
 
-	waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+	cmd.ProcessState.Sys()
 
 	return nil
 }
@@ -133,19 +129,17 @@ func (l *Local) Zip(src, dest, dir, name string) error {
 	cmd := exec.Command("zip", filepath.Join(dest, archive), "-r", dir)
 	os.Chdir("-")
 
-	var waitStatus syscall.WaitStatus
 	if err := cmd.Run(); err != nil {
 		if err != nil {
-			os.Stderr.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+			return xerrors.Errorf("Unable to zip archive: %w", err)
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
-			waitStatus = exitError.Sys().(syscall.WaitStatus)
-			fmt.Printf("Output: %s\n", []byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+			exitError.Sys()
 		}
 		return err
 	}
 
-	waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
+	cmd.ProcessState.Sys()
 
 	return nil
 }
