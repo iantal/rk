@@ -12,8 +12,6 @@ require (
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/lib/pq v1.8.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
-	github.com/nicholasjackson/building-microservices-youtube/product-images v0.0.0-20200615074401-130c1df925c8
-	github.com/nicholasjackson/env v0.6.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.3.0
 	github.com/yuin/goldmark v1.2.1 // indirect

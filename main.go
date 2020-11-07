@@ -17,24 +17,18 @@ import (
 	"github.com/iantal/rk/internal/rest/handlers"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // postgres
-	"github.com/nicholasjackson/env"
 	"github.com/spf13/viper"
 )
 
-var (
-	bindAddress = env.String("BIND_ADDRESS", false, ":8002", "Bind address for the server")
-	logLevel    = env.String("LOG_LEVEL", false, "debug", "Log output level for the server [debug, info, trace]")
-	basePath    = env.String("BASE_PATH", false, "./repos", "Base path to save uploads")
-)
 
 func main() {
 	viper.AutomaticEnv()
-	env.Parse()
+	basePath := fmt.Sprintf("%v", viper.Get("BASE_PATH"))
 
 	l := hclog.New(
 		&hclog.LoggerOptions{
 			Name:  "rk",
-			Level: hclog.LevelFromString(*logLevel),
+			Level: hclog.LevelFromString("debug"),
 		},
 	)
 
@@ -43,7 +37,7 @@ func main() {
 
 	// create the storage class, use local storage
 	// max filesize 5GB
-	stor, err := files.NewLocal(*basePath, 1024*1000*1000*5)
+	stor, err := files.NewLocal(basePath, 1024*1000*1000*5)
 	if err != nil {
 		l.Error("Unable to create storage", "error", err)
 		os.Exit(1)
@@ -88,7 +82,7 @@ func main() {
 
 	// create a new server
 	s := http.Server{
-		Addr:         *bindAddress,      // configure the bind address
+		Addr:         ":8002",      // configure the bind address
 		Handler:      ch(sm),            // set the default handler
 		ErrorLog:     sl,                // the logger for the server
 		ReadTimeout:  5 * time.Second,   // max time to read request from the client
@@ -98,7 +92,7 @@ func main() {
 
 	// start the server
 	go func() {
-		l.Info("Starting server", "bind_address", *bindAddress)
+		l.Info("Starting server", "bind_address", ":8002")
 
 		err := s.ListenAndServe()
 		if err != nil {
