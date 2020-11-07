@@ -7,22 +7,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/hashicorp/go-hclog"
 	"github.com/iantal/rk/internal/domain"
 	"github.com/iantal/rk/internal/files"
 	"github.com/iantal/rk/internal/repository"
 	"github.com/iantal/rk/internal/util"
+	"github.com/sirupsen/logrus"
 )
 
 // Projects is a handler for reading and writing projects to a storage and db
 type Projects struct {
-	l     hclog.Logger
+	l     *util.StandardLogger
 	store files.Storage
 	db    *repository.ProjectDB
 }
 
 // NewProjects creates a handler for projects
-func NewProjects(log hclog.Logger, store files.Storage, db *repository.ProjectDB) *Projects {
+func NewProjects(log *util.StandardLogger, store files.Storage, db *repository.ProjectDB) *Projects {
 	return &Projects{
 		l:     log,
 		store: store,
@@ -37,7 +37,6 @@ type GenericError struct {
 
 // ListAll returns a list of existing projects
 func (p *Projects) ListAll(rw http.ResponseWriter, r *http.Request) {
-	p.l.Debug("Get all projects")
 	rw.Header().Add("Content-Type", "application/json")
 
 	projects, err := p.db.GetProjects()
@@ -50,7 +49,8 @@ func (p *Projects) ListAll(rw http.ResponseWriter, r *http.Request) {
 	err = util.ToJSON(projects, rw)
 	if err != nil {
 		// we should never be here but log the error just incase
-		p.l.Error("Unable to serialize project", "error", err)
+		p.l.WithField("error", err).Error("Unable to serialize project")
+
 	}
 }
 
@@ -61,6 +61,7 @@ func (p *Projects) Download(rw http.ResponseWriter, r *http.Request) {
 	project := p.db.GetProjectByID(id)
 	if project == nil {
 		rw.WriteHeader(http.StatusInternalServerError)
+		p.l.WithField("projectId", id).Error("Not found")
 		util.ToJSON(&GenericError{Message: "Project not found"}, rw)
 		return
 	}
@@ -77,6 +78,7 @@ func (p *Projects) DownloadGitDir(rw http.ResponseWriter, r *http.Request) {
 	project := p.db.GetProjectByID(id)
 	if project == nil {
 		rw.WriteHeader(http.StatusInternalServerError)
+		p.l.WithField("projectId", id).Error("Not found")
 		util.ToJSON(&GenericError{Message: "Project not found"}, rw)
 		return
 	}
@@ -92,6 +94,7 @@ func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
 	project := p.db.GetProjectByID(id)
 	if project == nil {
 		rw.WriteHeader(http.StatusInternalServerError)
+		p.l.WithField("projectId", id).Error("Not found")
 		util.ToJSON(&GenericError{Message: "Project not found"}, rw)
 		return
 	}
@@ -100,7 +103,7 @@ func (p *Projects) ListSingle(rw http.ResponseWriter, r *http.Request) {
 	err := util.ToJSON(project, rw)
 	if err != nil {
 		// we should never be here but log the error just incase
-		p.l.Error("Unable to serialize project", "error", err)
+		p.l.WithField("error", err).Error("Unable to serialize project")
 	}
 }
 
@@ -110,7 +113,10 @@ func (p *Projects) CreateProject(rw http.ResponseWriter, r *http.Request) {
 	id := uuid.New()
 	fn := vars["filename"]
 
-	p.l.Info("Creating project", "id", id, "filename", fn)
+	p.l.WithFields(logrus.Fields{
+		"projectID": id,
+		"filename":  fn,
+	}).Info("Creating project")
 
 	savedProject := p.save(id, fn, rw, r.Body)
 	if savedProject != nil {
@@ -118,13 +124,16 @@ func (p *Projects) CreateProject(rw http.ResponseWriter, r *http.Request) {
 		err := util.ToJSON(savedProject, rw)
 		if err != nil {
 			// we should never be here but log the error just incase
-			p.l.Error("Unable to serialize project", "error", err)
+			p.l.WithField("error", err).Error("Unable to serialize project")
 		}
 	}
 }
 
 func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.ReadCloser) *domain.Project {
-	p.l.Info("Save project - storage", "id", id, "path", path)
+	p.l.WithFields(logrus.Fields{
+		"projectID": id,
+		"path":      path,
+	}).Info("Save project to storage")
 
 	unzippedPath := filepath.Join(id.String(), "unzip")
 	gzp := filepath.Join(id.String(), "git")
@@ -134,29 +143,32 @@ func (p *Projects) save(id uuid.UUID, path string, rw http.ResponseWriter, r io.
 	err := p.store.Save(fp, r)
 
 	if err != nil {
-		p.l.Error("Unable to save file", "error", err)
+		p.l.WithField("error", err).Error("Unable to save file")
 		http.Error(rw, "Unable to save file", http.StatusInternalServerError)
 		return nil
 	}
 
-	go p.process(fp, unzippedPath, gzp, path)
+	go p.process(id.String(), fp, unzippedPath, gzp, path)
 
 	zf := filepath.Join(p.store.FullPath(gzp), zp)
 	project := domain.NewProject(id, path, p.store.FullPath(unzippedPath), p.store.FullPath(fp), zf)
-	p.l.Debug("Save project - db", "id", id, "path", path)
 	p.db.AddProject(project)
 	return project
 }
 
-func (p *Projects) process(fp, unzippedPath, gzp, path string) {
-	p.l.Info("Unzipping", "path", unzippedPath)
+func (p *Projects) process(id, fp, unzippedPath, gzp, path string) {
+	p.l.WithFields(logrus.Fields{
+		"path": unzippedPath,
+		"projectID": id,
+	}).Info("Unzipping")
+
 	err := p.store.Unzip(p.store.FullPath(fp), p.store.FullPath(unzippedPath), path)
 	if err != nil {
-		p.l.Error("Unable to unzip file", "error", err)
+		p.l.WithField("error", err).Error("Unable to unzip file")
 	}
 
 	err = p.store.Zip(p.store.FullPath(unzippedPath), p.store.FullPath(gzp), ".git", path)
 	if err != nil {
-		p.l.Error("Unable to zip .git directory", "error", err)
+		p.l.WithField("error", err).Error("Unable to zip .git directory")
 	}
 }

@@ -2,19 +2,19 @@ package repository
 
 import (
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-hclog"
 	"github.com/iantal/rk/internal/domain"
+	"github.com/iantal/rk/internal/util"
 	"github.com/jinzhu/gorm"
 )
 
 // ProjectDB defines the CRUD operations for storing projects in the db
 type ProjectDB struct {
-	log hclog.Logger
+	log *util.StandardLogger
 	db  *gorm.DB
 }
 
 // NewProjectDB returns a ProjectDB object for handling CRUD operations
-func NewProjectDB(log hclog.Logger, db *gorm.DB) *ProjectDB {
+func NewProjectDB(log *util.StandardLogger, db *gorm.DB) *ProjectDB {
 	db.AutoMigrate(&domain.Project{})
 	return &ProjectDB{
 		log: log,
@@ -40,7 +40,7 @@ func (p *ProjectDB) GetProjectByID(id string) *domain.Project {
 	project := &domain.Project{}
 	uid, err := uuid.Parse(id)
 	if err != nil {
-		p.log.Error("Project with projectId {} was not found")
+		p.log.Error("Project with projectId %s was not found", id)
 		return nil
 	}
 	p.db.Find(&project, "project_id = ?", uid)

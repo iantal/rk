@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/iantal/rk/internal/repository"
+	"github.com/iantal/rk/internal/util"
 
 	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	hclog "github.com/hashicorp/go-hclog"
 	"github.com/iantal/rk/internal/files"
 	"github.com/iantal/rk/internal/rest/handlers"
 	"github.com/jinzhu/gorm"
@@ -25,21 +25,13 @@ func main() {
 	viper.AutomaticEnv()
 	basePath := fmt.Sprintf("%v", viper.Get("BASE_PATH"))
 
-	l := hclog.New(
-		&hclog.LoggerOptions{
-			Name:  "rk",
-			Level: hclog.LevelFromString("debug"),
-		},
-	)
-
-	// create a logger for the server from the default logger
-	sl := l.StandardLogger(&hclog.StandardLoggerOptions{InferLevels: true})
+	logger := util.NewLogger()
 
 	// create the storage class, use local storage
 	// max filesize 5GB
-	stor, err := files.NewLocal(basePath, 1024*1000*1000*5)
+	stor, err := files.NewLocal(logger, basePath, 1024*1000*1000*5)
 	if err != nil {
-		l.Error("Unable to create storage", "error", err)
+		logger.Error("Unable to create storage", "error", err)
 		os.Exit(1)
 	}
 
@@ -61,8 +53,8 @@ func main() {
 		panic("Ping failed!")
 	}
 
-	projectDB := repository.NewProjectDB(l, db)
-	projH := handlers.NewProjects(l, stor, projectDB)
+	projectDB := repository.NewProjectDB(logger, db)
+	projH := handlers.NewProjects(logger, stor, projectDB)
 	mw := handlers.GzipHandler{}
 
 	// create a new serve mux and register the handlers
@@ -84,7 +76,6 @@ func main() {
 	s := http.Server{
 		Addr:         ":8002",      // configure the bind address
 		Handler:      ch(sm),            // set the default handler
-		ErrorLog:     sl,                // the logger for the server
 		ReadTimeout:  5 * time.Second,   // max time to read request from the client
 		WriteTimeout: 10 * time.Second,  // max time to write response to the client
 		IdleTimeout:  120 * time.Second, // max time for connections using TCP Keep-Alive
@@ -92,11 +83,11 @@ func main() {
 
 	// start the server
 	go func() {
-		l.Info("Starting server", "bind_address", ":8002")
+		logger.Info("Starting server bind_address ", ":8002")
 
 		err := s.ListenAndServe()
 		if err != nil {
-			l.Error("Unable to start server", "error", err)
+			logger.Error("Unable to start server ", err)
 			os.Exit(1)
 		}
 	}()
@@ -108,7 +99,7 @@ func main() {
 
 	// Block until a signal is received.
 	sig := <-c
-	l.Info("Shutting down server with", "signal", sig)
+	logger.Info("Shutting down server with signal ", sig)
 
 	// gracefully shutdown the server, waiting max 30 seconds for current operations to complete
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)

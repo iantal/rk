@@ -3,7 +3,7 @@ version: '3.8'
 services:
     rk:
         container_name: rk
-        image: micky0000/seclens:v1.0.3-rk
+        image: micky0000/seclens:v1.0.4-rk
         ports:
             - 8002:8002
         env_file: 

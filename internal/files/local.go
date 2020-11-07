@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/iantal/rk/internal/util"
 	"golang.org/x/xerrors"
 )
 
 // Local is an implementation of the Storage interface which works with the
 // local disk on the current machine
 type Local struct {
+	log         *util.StandardLogger
 	maxFileSize int // maximum numbber of bytes for files
 	basePath    string
 }
@@ -21,13 +23,13 @@ type Local struct {
 // NewLocal creates a new Local filesytem with the given base path
 // basePath is the base directory to save files to
 // maxSize is the max number of bytes that a file can be
-func NewLocal(basePath string, maxSize int) (*Local, error) {
+func NewLocal(log *util.StandardLogger, basePath string, maxSize int) (*Local, error) {
 	p, err := filepath.Abs(basePath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Local{basePath: p}, nil
+	return &Local{log, maxSize, p}, nil
 }
 
 // Save the contents of the Writer to the given path
@@ -105,7 +107,7 @@ func (l *Local) Unzip(archive, target, name string) error {
 	var waitStatus syscall.WaitStatus
 	if err := cmd.Run(); err != nil {
 		if err != nil {
-			os.Stderr.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+			l.log.Error("Error ", err.Error())
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
