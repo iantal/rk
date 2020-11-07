@@ -12,6 +12,7 @@ require (
 	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/lib/pq v1.8.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
+	github.com/sirupsen/logrus v1.2.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.3.0
 	github.com/yuin/goldmark v1.2.1 // indirect
