@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rk-sts
+  labels:
+    app: rk
+spec:
+  serviceName: rk-service
+  selector:
+    matchLabels:
+      app: rk
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: rk
+    spec:
+      imagePullSecrets: 
+        - name: dockerregistrykey
+      containers:
+        - name: rk
+          image: micky0000/seclens:v1.0.5-rk
+          imagePullPolicy: "Always"
+          ports:
+            - containerPort: 8002
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: rk-config
+                  key: postgres_user
+
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: rk-config
+                  key: postgres_host
+
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: rk-config
+                  key: postgres_port
+
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: rk-config
+                  key: postgres_db
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgdb-postgresql
+                  key: postgresql-password
+
+          volumeMounts:
+            - name: rk-data
+              mountPath: /opt/data
+
+      volumes:
+        - name: rk-data
+          persistentVolumeClaim:
+            claimName: rk-claim

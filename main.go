@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-
 func main() {
 	viper.AutomaticEnv()
 	basePath := fmt.Sprintf("%v", viper.Get("BASE_PATH"))
@@ -31,7 +30,7 @@ func main() {
 	// max filesize 5GB
 	stor, err := files.NewLocal(logger, basePath, 1024*1000*1000*5)
 	if err != nil {
-		logger.Error("Unable to create storage", "error", err)
+		logger.WithField("error", err).Error("Unable to create storage")
 		os.Exit(1)
 	}
 
@@ -45,12 +44,14 @@ func main() {
 	db, err := gorm.Open("postgres", connection)
 	defer db.Close()
 	if err != nil {
-		panic("Failed to connect to database!")
+		logger.WithField("error", err).Error("Failed to connect to database!")
+		os.Exit(1)
 	}
 
 	err = db.DB().Ping()
 	if err != nil {
-		panic("Ping failed!")
+		logger.WithField("error", err).Error("Ping failed!")
+		os.Exit(1)
 	}
 
 	projectDB := repository.NewProjectDB(logger, db)
@@ -74,7 +75,7 @@ func main() {
 
 	// create a new server
 	s := http.Server{
-		Addr:         ":8002",      // configure the bind address
+		Addr:         ":8002",           // configure the bind address
 		Handler:      ch(sm),            // set the default handler
 		ReadTimeout:  5 * time.Second,   // max time to read request from the client
 		WriteTimeout: 10 * time.Second,  // max time to write response to the client
@@ -83,11 +84,10 @@ func main() {
 
 	// start the server
 	go func() {
-		logger.Info("Starting server bind_address ", ":8002")
-
+		logger.Info("Starting server bind_address :8002")
 		err := s.ListenAndServe()
 		if err != nil {
-			logger.Error("Unable to start server ", err)
+			logger.WithField("error", err).Error("Unable to start server")
 			os.Exit(1)
 		}
 	}()
@@ -99,7 +99,7 @@ func main() {
 
 	// Block until a signal is received.
 	sig := <-c
-	logger.Info("Shutting down server with signal ", sig)
+	logger.WithField("signal", sig).Info("Shutting down server with signal")
 
 	// gracefully shutdown the server, waiting max 30 seconds for current operations to complete
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
