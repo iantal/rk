@@ -4,7 +4,7 @@
 
 This service handles the upload functionality. The git repository of the project will be uploaded as a zip archive and stored on the local storage (disk). 
 
-The zip file should contain hidden directories and files as well. For example the .git directory. 
+The zip file should contain hidden directories and files as well (ex: .git).
 
 Command to generate the zip file
 
